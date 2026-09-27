@@ -56,10 +56,11 @@ describe('ApplicationDetailPage', () => {
     await user.click(screen.getByRole('button', { name: /^approve$/i }))
     await user.click(await screen.findByRole('button', { name: /start onboarding/i }))
 
-    expect(await screen.findByText(/tenant-99/)).toBeInTheDocument()
+    expect(await screen.findByText('TN-8R4M-2QXD')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /copy code/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /continue to check-in/i })).toHaveAttribute(
       'href',
-      `/app/properties/${testApplicationUnderReview.propertyId}/residencies/new`,
+      `/app/properties/${testApplicationUnderReview.propertyId}/residencies/new?tenant=TN-8R4M-2QXD`,
     )
   })
 })

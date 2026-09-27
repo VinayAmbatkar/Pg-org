@@ -17,6 +17,7 @@ import { FoodTab } from '../components/property360/FoodTab'
 import { ApplicationsTab } from '../components/property360/ApplicationsTab'
 import { PropertyHealth } from '../components/property360/PropertyHealth'
 import { VisitsTab } from '../components/property360/VisitsTab'
+import { ListingPanel } from '@/features/listings/components/ListingPanel'
 import { useCurrentOrganization } from '@/features/organizations/hooks/useCurrentOrganization'
 import { hasPermission, type Permission } from '@/infrastructure/permissions/permissions'
 import { ApiError } from '@/infrastructure/api/errors'
@@ -30,6 +31,7 @@ import { PropertyStatusBadge } from '../components/PropertyStatusBadge'
 // view is not offered at all.
 const TABS: { value: string; label: string; permission: Permission }[] = [
   { value: 'overview', label: 'Overview', permission: 'properties.view' },
+  { value: 'listing', label: 'Listing', permission: 'listing.view' },
   { value: 'rooms', label: 'Rooms & Beds', permission: 'rooms.view' },
   { value: 'tenants', label: 'Tenants', permission: 'tenants.view' },
   { value: 'billing', label: 'Billing', permission: 'billing.view' },
@@ -114,6 +116,7 @@ export function PropertyDetailPage() {
       <TabPanel idBase={TAB_ID} value={tab}>
         <SectionBoundary resetKeys={[propertyId, tab]}>
           {tab === 'overview' && <PropertyHealth property={property} role={role} />}
+          {tab === 'listing' && <ListingPanel property={property} canManage={hasPermission(role, 'listing.manage')} />}
           {tab === 'rooms' && (
             <RoomsBedsPanel
               propertyId={propertyId}

@@ -198,6 +198,7 @@ export const testResidencyActive: Residency = {
 
 export const testTenant: Tenant = {
   id: 'tenant-1',
+  code: 'TN-3K7Q-9XZ2',
   userId: 'user-2',
   createdAt: '2026-08-01T00:00:00.000Z',
 }
@@ -486,7 +487,14 @@ export const handlers = [
   }),
 
   http.post(api('/applications/:id/start-onboarding'), async () => {
-    return ok({ tenantId: 'tenant-99', applicationId: testApplicationUnderReview.id, reused: false })
+    return ok({ tenantId: 'tenant-99', tenantCode: 'TN-8R4M-2QXD', applicationId: testApplicationUnderReview.id, reused: false })
+  }),
+
+  // GET /tenants/lookup (OWNER/MANAGER): resolves the short tenant code a tenant shares.
+  http.get(api('/tenants/lookup'), ({ request }) => {
+    const code = new URL(request.url).searchParams.get('code')?.toUpperCase().replace(/[\s-]/g, '')
+    if (code === 'TN8R4M2QXD') return ok({ tenantId: '8f3c2a1b-9e44-4c1d-8a2b-1234567890ab', code: 'TN-8R4M-2QXD', name: 'Priya Tenant' })
+    return fail(404, 'TENANT_NOT_FOUND', 'Tenant not found.')
   }),
 
   http.get(api('/properties/:propertyId/visits'), async () => {

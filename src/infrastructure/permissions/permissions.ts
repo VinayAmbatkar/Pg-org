@@ -33,6 +33,8 @@ export type Permission =
   | 'applications.manage'
   | 'visits.view'
   | 'visits.manage'
+  | 'listing.view'
+  | 'listing.manage'
 
 const VIEW_ROLES: MembershipRole[] = ['OWNER', 'MANAGER', 'STAFF']
 const MANAGE_ROLES: MembershipRole[] = ['OWNER', 'MANAGER']
@@ -70,6 +72,22 @@ const PERMISSION_ROLES: Record<Permission, MembershipRole[]> = {
   'applications.manage': MANAGE_ROLES,
   'visits.view': VIEW_ROLES,
   'visits.manage': MANAGE_ROLES,
+  // PropertyListingsService: READ_ROLES may view, MANAGE_ROLES may edit/publish/unpublish.
+  'listing.view': VIEW_ROLES,
+  'listing.manage': MANAGE_ROLES,
+}
+
+/** The role the UI should authorize with. pg-backend returns every organization to a platform
+ * SUPER_ADMIN but with `yourRole: null` (they are not a member), while its services let a
+ * SUPER_ADMIN through every role check (e.g. `if (user.platformRole === 'SUPER_ADMIN') return`).
+ * Mirroring that bypass here - as OWNER, the broadest role - keeps the UI from hiding pages the
+ * backend would allow. A real membership role always wins. The backend still authorizes every call. */
+export function effectiveRole(
+  membershipRole: MembershipRole | null | undefined,
+  platformRole: 'SUPER_ADMIN' | 'USER' | null | undefined,
+): MembershipRole | null {
+  if (membershipRole) return membershipRole
+  return platformRole === 'SUPER_ADMIN' ? 'OWNER' : null
 }
 
 export function hasPermission(role: MembershipRole | null | undefined, permission: Permission): boolean {

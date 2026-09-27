@@ -41,7 +41,9 @@ export function UserMenu() {
   }
 
   const initials = user?.name ? getInitials(user.name) : '?'
-  const roleLabel = organization?.yourRole ? humanizeEnum(organization.yourRole) : 'Member'
+  // A platform super admin has no membership role of their own - say so instead of "Owner".
+  const roleLabel =
+    user?.platformRole === 'SUPER_ADMIN' ? 'Super Admin' : organization?.yourRole ? humanizeEnum(organization.yourRole) : 'Member'
 
   return (
     <div className="relative" ref={ref}>

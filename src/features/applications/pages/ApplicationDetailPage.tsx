@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { CopyButton } from '@/components/feedback/CopyButton'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog } from '@/components/ui/dialog'
 import { ErrorState } from '@/components/feedback/ErrorState'
@@ -36,7 +37,7 @@ export function ApplicationDetailPage() {
 
   const [rejectOpen, setRejectOpen] = useState(false)
   const [scheduleVisitOpen, setScheduleVisitOpen] = useState(false)
-  const [onboardingResult, setOnboardingResult] = useState<{ tenantId: string; reused: boolean } | null>(null)
+  const [onboardingResult, setOnboardingResult] = useState<{ tenantId: string; tenantCode: string; reused: boolean } | null>(null)
 
   if (isLoading) return <PageSpinner />
   if (error || !application) return <ErrorState error={error} onRetry={() => refetch()} />
@@ -166,13 +167,16 @@ export function ApplicationDetailPage() {
             </p>
             {onboardingResult ? (
               <div className="space-y-2 rounded-lg border border-border p-3 text-sm">
-                <p>
-                  Tenant {onboardingResult.reused ? 'already existed' : 'created'}:{' '}
-                  <span className="font-mono text-xs">{onboardingResult.tenantId}</span>
-                </p>
+                <p>Tenant profile {onboardingResult.reused ? 'already existed' : 'created'}. Tenant code:</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-md bg-muted px-2 py-1 font-mono text-base font-semibold tracking-wider">
+                    {onboardingResult.tenantCode}
+                  </span>
+                  <CopyButton value={onboardingResult.tenantCode} label="Copy code" />
+                </div>
                 <Link
-                  to={`/app/properties/${application.propertyId}/residencies/new`}
-                  className="font-medium text-primary underline underline-offset-2"
+                  to={`/app/properties/${application.propertyId}/residencies/new?tenant=${encodeURIComponent(onboardingResult.tenantCode)}`}
+                  className="inline-block font-medium text-primary underline underline-offset-2"
                 >
                   Continue to check-in →
                 </Link>

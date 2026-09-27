@@ -1,33 +1,87 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
-import { useNavigate, useParams } from 'react-router-dom'
+import { CheckCircle2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useToast } from '@/components/feedback/ToastProvider'
+import { tenantsApi, type TenantLookup } from '@/features/tenants/api/tenantsApi'
 import { ApiError } from '@/infrastructure/api/errors'
 import { useCreateResidency } from '../hooks/useResidencyMutations'
-import { createResidencySchema, type CreateResidencyFormValues } from '../schemas/residency.schema'
+import { createResidencySchema, isTenantUuid, type CreateResidencyFormValues } from '../schemas/residency.schema'
+
+function lookupErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 404) return 'No tenant found with this code. Check it with the tenant.'
+    if (error.code === 'TENANT_CODE_AMBIGUOUS') return 'This code matches more than one tenant. Ask the tenant for their full tenant ID.'
+    return error.message
+  }
+  return 'Unable to find this tenant.'
+}
 
 export function ResidencyCreatePage() {
   const { propertyId = '' } = useParams()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { toast } = useToast()
   const createResidency = useCreateResidency(propertyId)
+  // Resolved tenant for the code currently in the field (null until looked up).
+  const [resolved, setResolved] = useState<(TenantLookup & { ref: string }) | null>(null)
+  const [lookupError, setLookupError] = useState<string | null>(null)
+  const [lookingUp, setLookingUp] = useState(false)
 
   const {
     register,
     handleSubmit,
+    control,
+    trigger,
     formState: { errors, isSubmitting },
   } = useForm<CreateResidencyFormValues>({
     resolver: zodResolver(createResidencySchema),
+    // "Continue to check-in" from an application passes the code along (?tenant=TN-…).
+    defaultValues: { tenantRef: searchParams.get('tenant')?.slice(0, 64) ?? '', startDate: '', expectedEndDate: '' },
   })
+  const tenantRef = useWatch({ control, name: 'tenantRef' }).trim()
+  const current = resolved && resolved.ref === tenantRef ? resolved : null
+
+  async function resolveTenant(ref: string): Promise<string | null> {
+    if (isTenantUuid(ref)) return ref
+    if (current) return current.tenantId
+    setLookingUp(true)
+    setLookupError(null)
+    try {
+      const result = await tenantsApi.lookup(ref)
+      setResolved({ ...result, ref })
+      return result.tenantId
+    } catch (error) {
+      setResolved(null)
+      setLookupError(lookupErrorMessage(error))
+      return null
+    } finally {
+      setLookingUp(false)
+    }
+  }
+
+  // Pre-filled from the link: look it up straight away so the owner sees who it is.
+  const prefilled = searchParams.get('tenant')
+  useEffect(() => {
+    if (!prefilled) return
+    void trigger('tenantRef').then((valid) => {
+      if (valid) void resolveTenant(prefilled.trim())
+    })
+    // Runs once for the value the page was opened with.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function onSubmit(values: CreateResidencyFormValues) {
+    const tenantId = await resolveTenant(values.tenantRef.trim())
+    if (!tenantId) return
     try {
       const residency = await createResidency.mutateAsync({
-        tenantId: values.tenantId,
+        tenantId,
         startDate: values.startDate,
         expectedEndDate: values.expectedEndDate || undefined,
       })
@@ -42,6 +96,8 @@ export function ResidencyCreatePage() {
     }
   }
 
+  const tenantError = errors.tenantRef?.message ?? lookupError
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <h1 className="text-2xl font-semibold">Add Tenant</h1>
@@ -52,14 +108,44 @@ export function ResidencyCreatePage() {
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="tenantId">Tenant ID</Label>
-              <Input id="tenantId" invalid={Boolean(errors.tenantId)} {...register('tenantId')} />
-              <p className="text-xs text-muted-foreground">
-                Enter the tenant's ID — self-service tenant registration happens outside this app for now.
+              <Label htmlFor="tenantRef">Tenant code</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="tenantRef"
+                  placeholder="TN-3K7Q-9XZ2"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="font-mono uppercase"
+                  invalid={Boolean(tenantError)}
+                  aria-describedby="tenantRef-hint"
+                  {...register('tenantRef', { onChange: () => setLookupError(null) })}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  isLoading={lookingUp}
+                  disabled={!tenantRef || isTenantUuid(tenantRef)}
+                  onClick={async () => {
+                    if (await trigger('tenantRef')) void resolveTenant(tenantRef)
+                  }}
+                >
+                  Find
+                </Button>
+              </div>
+              <p id="tenantRef-hint" className="text-xs text-muted-foreground">
+                The tenant can see their code on their PGMet Profile page. It is also shown here after you start onboarding an approved
+                application.
               </p>
-              {errors.tenantId && (
+              {current && (
+                <p className="flex items-center gap-1.5 text-sm text-success" role="status">
+                  <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+                  <span className="font-medium">{current.name}</span>
+                  <span className="font-mono">{current.code}</span>
+                </p>
+              )}
+              {tenantError && (
                 <p className="text-sm text-destructive" role="alert">
-                  {errors.tenantId.message}
+                  {tenantError}
                 </p>
               )}
             </div>

@@ -126,6 +126,8 @@ export interface RoomHistoryEntry {
 
 export interface Tenant {
   id: string
+  /** Short display form of the id, e.g. TN-3K7Q-9XZ2. */
+  code: string
   userId: string
   createdAt: string
 }
@@ -498,6 +500,8 @@ export interface Visit {
 
 export interface ConversionResult {
   tenantId: string
+  /** Short display form of tenantId, e.g. TN-3K7Q-9XZ2 (pg-backend tenants/tenant-code.ts). */
+  tenantCode: string
   applicationId: string
   reused: boolean
 }

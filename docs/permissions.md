@@ -38,3 +38,16 @@ nothing compares role strings directly. For the model and its limits see `author
 
 `src/app/router/routes.test.tsx` asserts every sidebar target resolves to a real route, and that a
 role without `rooms.view` gets neither the sidebar entry nor the page.
+
+
+## Property listing (public Tenant Web listing)
+
+| Permission | Roles | Enforced by |
+| --- | --- | --- |
+| `listing.view` | OWNER, MANAGER, STAFF | `PropertyListingsService` READ_ROLES (`GET /properties/:id/listing` - note it lazily creates an empty DRAFT) |
+| `listing.manage` | OWNER, MANAGER | `PropertyListingsService` MANAGE_ROLES (`PATCH /properties/:id/listing`, `POST …/publish`, `POST …/unpublish`) |
+
+UI: Property detail → **Listing** tab (`features/listings`). Publishing requires title, description,
+city (copied from the property address) and locality - the backend returns `LISTING_INCOMPLETE`
+otherwise. Numbers (price, latitude, longitude) can't be cleared once set: `UpsertListingDto`
+keeps the existing value when omitted and rejects `null`, so the form blocks emptying them.
